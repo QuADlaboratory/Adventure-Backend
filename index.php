@@ -3,13 +3,17 @@
 //__DIR__ . '/../../src/ADVENTURE/ - get rid of this when testing not on server
 include(__DIR__ . '/../../src/ADVENTURE/connectToDB.php');
 
+// get what the sender's ID is
+$headers = apache_request_headers();
+$ID = $headers['Authorization'];
+
 // Only enters if it is a http post request
 if (!$_SERVER["REQUEST_METHOD"] == "POST"){
     echo "\nInvalid request method";
     http_response_code(405);  
 
 //Authorization so that only participants can send things
-} elseif(!authentication($conn)){
+} elseif(!authentication($conn, $ID)){
     http_response_code(401);
     echo "\nInvalid User ID";
 
@@ -24,64 +28,29 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
     echo "\nInvalid data";
     http_response_code(400);
 
-} else {
+} else { 
+
     // The request is to put in sql data
     if ($_SERVER['CONTENT_TYPE'] == 'application/json; charset=UTF-8'){
+        // get the body of the request
         $body = json_decode(file_get_contents('php://input'), true);
-        $list = ["touch_start", "touch_end", "x1_touch", "y1_touch", "touch_raw","x2_touch", "y2_touch"];
-        // Handle the JSON data here	
-        // loops for every trial
-        foreach ($body as $elem){
-            // getting the values into vars
-            $task_start = $elem["task_start"]; 
-            $trial_num = $elem["trial_num"];
-            $digit = $elem["digit"];
-            $fontsize = $elem["fontsize"];
-            $digit_start = $elem["digit_start"];
-            $mask_start = $elem["mask_start"];
-            $start_time_resp= $elem["start_time_resp"];
-            $end_time_resp = $elem["end_time_resp"];
-            $x1_resp = $elem["x1_resp"];
-            $y1_resp = $elem["y1_resp"];
-            $timestamps = $elem["timestamps"];
-            $x2_resp =$elem["x2_resp"];
-            $y2_resp = $elem["y2_resp"];
-            $resp_time = $elem["resp_time"];
-            $resp = $elem["resp"];
-            $screen_height = $elem["screen_height"];
-            $screen_width = $elem["screen_width"];
 
-            // list of the var that could be null
-            $listData = [$start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $timestamps, $x2_resp, $y2_resp];
+        // get game type then if statement for respective thing
+        $game_type = substr($ID, 8);
 
-            // this section is to put all the not null values into the respective col
-            // dbeaver was weird so these are defult to null and cannot send a null
-            $col = "";
-            $colData = "";
-            for ($i=0; $i < count($list); $i++){
-                if ($listData[$i] != null){
-                    $col = $col . ', '.$list[$i];
-                    $colData = $colData .", '".$listData[$i]."'" ;
-                }
-            }
-
-            // the query is inserting a trial into the database
-            $sql = "INSERT INTO sartdata 
-                    (part_id, start_time, start_time_ms, trial_num, digit, fontsize, digit_start, mask_start".$col.", touch_dur, swipe_dir, screen_height, screen_width) 
-                    VALUES ('".$ID."', '".$task_start."','" .$elem['task_start_ms']."' ,'".$trial_num."' , '".$digit."', '".$fontsize."', '".$digit_start."', '".$mask_start."'".$colData.",'".$resp_time."', '".$resp."', '".$screen_height."', '".$screen_width."')";
-                    
-            // if query is sucessful, then its added and a msg is sent saying it is
-            if (mysqli_query($conn, $sql)){
-                //echo "sent";
-                http_response_code(201);
-            }else{ // shows the error if not working
-                echo "query error". mysqli_error($conn);
-            }
+        if($game_type == "SART"){
+            sartQuery($body);
+        } elseif($game_type == "Stew"){
+            stewInsertQuerys($body);
+        }else{
+            echo 'Invalid game type';
+            http_response_code(400);
         }
+
         //after data has been saved to db, then the connection btwn server and db gets stopped
         mysqli_close($conn);
 
-    // text is     
+    // For logging in 
     } else {
         // login request
         if (file_get_contents('php://input') == "Loggingin" ){
@@ -95,11 +64,12 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
 
 }
 
-function authentication ($conn){
+function authentication ($conn, $auth_header){
     //Authorization so that only participants can send things
     // get what the sender's ID is
     $headers = apache_request_headers();
-    $ID = $headers['Authorization'];
+    $ID = $headers['Authorization']; // check if more than 8 long, and has a - in it
+    // first part is the name - then game
 
     // The query is checking how many rows have in the part_id of the participantid table are $ID
     $query = "SELECT * FROM participantid WHERE part_id = '$ID'";
@@ -113,5 +83,118 @@ function authentication ($conn){
         return false;
     }
 }
+
+function sartQuery($body){
+    $list = ["touch_start", "touch_end", "x1_touch", "y1_touch", "touch_raw","x2_touch", "y2_touch"];
+    // Handle the JSON data here	
+    // loops for every trial
+    foreach ($body as $elem){
+        // getting the values into vars
+        $task_start = $elem["task_start"]; 
+        $trial_num = $elem["trial_num"];
+        $digit = $elem["digit"];
+        $fontsize = $elem["fontsize"];
+        $digit_start = $elem["digit_start"];
+        $mask_start = $elem["mask_start"];
+        $start_time_resp= $elem["start_time_resp"];
+        $end_time_resp = $elem["end_time_resp"];
+        $x1_resp = $elem["x1_resp"];
+        $y1_resp = $elem["y1_resp"];
+        $timestamps = $elem["timestamps"];
+        $x2_resp =$elem["x2_resp"];
+        $y2_resp = $elem["y2_resp"];
+        $resp_time = $elem["resp_time"];
+        $resp = $elem["resp"];
+        $screen_height = $elem["screen_height"];
+        $screen_width = $elem["screen_width"];
+
+        // list of the var that could be null
+        $listData = [$start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $timestamps, $x2_resp, $y2_resp];
+
+        // this section is to put all the not null values into the respective col
+        // dbeaver was weird so these are defult to null and cannot send a null
+        $col = "";
+        $colData = "";
+        for ($i=0; $i < count($list); $i++){
+            if ($listData[$i] != null){
+                $col = $col . ', '.$list[$i];
+                $colData = $colData .", '".$listData[$i]."'" ;
+            }
+        }
+
+        // the query is inserting a trial into the database
+        $sql = "INSERT INTO sartdata 
+                (part_id, start_time, start_time_ms, trial_num, digit, fontsize, digit_start, mask_start".$col.", touch_dur, swipe_dir, screen_height, screen_width) 
+                VALUES ('".$ID."', '".$task_start."','" .$elem['task_start_ms']."' ,'".$trial_num."' , '".$digit."', '".$fontsize."', '".$digit_start."', '".$mask_start."'".$colData.",'".$resp_time."', '".$resp."', '".$screen_height."', '".$screen_width."')";
+                
+        // if query is sucessful, then its added and a msg is sent saying it is
+        if (mysqli_query($conn, $sql)){
+            //echo "sent";
+            http_response_code(201);
+        }else{ // shows the error if not working
+            echo "query error". mysqli_error($conn);
+        }
+    }
+}
+function stewInsertQuerys($body){
+    // list of columns that can be null
+    $list = ["touch_start", "touch_end", "x1_touch", "y1_touch", "touch_raw","x2_touch", "y2_touch"];
+    // Handle the JSON data here	
+    // loops for every trial
+    foreach ($body as $elem){
+        // getting the values into vars
+        $task_start = $elem["Task_Start"]; 
+        $task_start_ms = $elem['task_start_ms'];
+        $trial_num = $elem["Trial_Num"];
+        $lvl = $elem["Level"];
+        $ingr = $elem["Ingredient_Name"];
+        $ingr_image = $elem["Ingredient_Image"];
+        $ingr_size = $elem["Ingredient_Size"];
+        $is_target = $elem["Is_Target"];
+        $ingr_start = $elem["Ingredient_Start"];
+        $mask_start = $elem["Lid_Start"];
+        $start_time_resp= $elem["Touch_Start"];
+        $end_time_resp = $elem["Touch_End"];
+        $x1_resp = $elem["Touch_ X1"];
+        $y1_resp = $elem["Touch_ Y1"];
+        $timestamps = $elem["Touch_Raw"];
+        $x2_resp =$elem["Touch_ X2"];
+        $y2_resp = $elem["Touch_ Y2"];
+        $resp_time = $elem["Resp_Time"];
+        $resp = $elem["Swipe_Dir"];
+        $screen_height = $elem["screen_height"];
+        $screen_width = $elem["screen_width"];
+
+        // list of the var that could be null
+        $listData = [$start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $timestamps, $x2_resp, $y2_resp];
+
+        // this section is to put all the not null values into the respective col
+        // dbeaver was weird so these are defult to null and cannot send a null
+        $col = "";
+        $colData = "";
+        // add only the none null since in SQL its defult null
+        // later can automate this process so no need to hard code the query 
+        for ($i=0; $i < count($list); $i++){
+            if ($listData[$i] != null){
+                $col = $col . ', '.$list[$i];
+                $colData = $colData .", '".$listData[$i]."'" ;
+            }
+        }
+
+        // the query is inserting a trial into the database
+        $sql = "INSERT INTO sartdata 
+                                (part_id, start_time, start_time_ms, level, trial_num, Ingredient_Name, Ingredient_Image, Ingredient_Size, Is_Target, Ingredient_Start, mask_start".$col.", touch_dur, swipe_dir, screen_height, screen_width) 
+                VALUES ('".$ID."', '".$task_start."','" .$task_start_ms."' ,'" .$lvl."' ,'".$trial_num."' , '".$ingr."', '".$ingr_image."','".$ingr_size."', '".$is_target."' '".$ingr_start."', '".$mask_start."'".$colData.",'".$resp_time."', '".$resp."', '".$screen_height."', '".$screen_width."')";
+                
+        // if query is sucessful, then its added and a msg is sent saying it is
+        if (mysqli_query($conn, $sql)){
+            //echo "sent";
+            http_response_code(201);
+        }else{ // shows the error if not working
+            echo "query error". mysqli_error($conn);
+        }
+    }
+}
+
 
 ?>
