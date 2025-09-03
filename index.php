@@ -5,7 +5,8 @@ include(__DIR__ . '/../../src/ADVENTURE/connectToDB.php');
 
 // get what the sender's ID is
 $headers = apache_request_headers();
-$ID = $headers['Authorization'];
+$auth_header = $headers['Authorization'];
+$ID = substr($auth_header, 0, 8);
 
 // Only enters if it is a http post request
 if (!$_SERVER["REQUEST_METHOD"] == "POST"){
@@ -36,15 +37,15 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
         $body = json_decode(file_get_contents('php://input'), true);
 
         // get game type then if statement for respective thing
-        $game_type = substr($ID, 8);
-
+        $game_type = substr($auth_header, 9);
+        echo $game_type;
         if($game_type == "SART"){
-            sartQuery($body);
+            sartQuery($conn, $body, $ID);
         } elseif($game_type == "Stew"){
-            stewInsertQuerys($body);
+            stewInsertQuerys($conn, $body, $ID);
         }else{
-            echo 'Invalid game type';
-            http_response_code(400);
+            echo '\nInvalid game type';
+            http_response_code(405);
         }
 
         //after data has been saved to db, then the connection btwn server and db gets stopped
@@ -58,17 +59,15 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
             http_response_code(204);
         } else{
             echo 'Invalid plain text request';
-            http_response_code(400);
+            http_response_code(406);
         }
     }
-
 }
 
-function authentication ($conn, $auth_header){
+function authentication ($conn, $ID){
     //Authorization so that only participants can send things
     // get what the sender's ID is
-    $headers = apache_request_headers();
-    $ID = $headers['Authorization']; // check if more than 8 long, and has a - in it
+    
     // first part is the name - then game
 
     // The query is checking how many rows have in the part_id of the participantid table are $ID
@@ -84,7 +83,7 @@ function authentication ($conn, $auth_header){
     }
 }
 
-function sartQuery($body){
+function sartQuery($conn, $body, $ID){
     $list = ["touch_start", "touch_end", "x1_touch", "y1_touch", "touch_raw","x2_touch", "y2_touch"];
     // Handle the JSON data here	
     // loops for every trial
@@ -136,15 +135,15 @@ function sartQuery($body){
         }
     }
 }
-function stewInsertQuerys($body){
+function stewInsertQuerys($conn, $body, $ID){
     // list of columns that can be null
     $list = ["touch_start", "touch_end", "x1_touch", "y1_touch", "touch_raw","x2_touch", "y2_touch"];
     // Handle the JSON data here	
     // loops for every trial
     foreach ($body as $elem){
         // getting the values into vars
-        $task_start = $elem["Task_Start"]; 
-        $task_start_ms = $elem['task_start_ms'];
+        $task_start = $elem["Start_Time"]; 
+        $task_start_ms = $elem['Start_Time_MS'];
         $trial_num = $elem["Trial_Num"];
         $lvl = $elem["Level"];
         $ingr = $elem["Ingredient_Name"];
@@ -155,15 +154,15 @@ function stewInsertQuerys($body){
         $mask_start = $elem["Lid_Start"];
         $start_time_resp= $elem["Touch_Start"];
         $end_time_resp = $elem["Touch_End"];
-        $x1_resp = $elem["Touch_ X1"];
-        $y1_resp = $elem["Touch_ Y1"];
+        $x1_resp = $elem["Touch_X1"];
+        $y1_resp = $elem["Touch_Y1"];
         $timestamps = $elem["Touch_Raw"];
-        $x2_resp =$elem["Touch_ X2"];
-        $y2_resp = $elem["Touch_ Y2"];
+        $x2_resp =$elem["Touch_X2"];
+        $y2_resp = $elem["Touch_Y2"];
         $resp_time = $elem["Resp_Time"];
         $resp = $elem["Swipe_Dir"];
-        $screen_height = $elem["screen_height"];
-        $screen_width = $elem["screen_width"];
+        $screen_height = $elem["Screen_Height"];
+        $screen_width = $elem["Screen_Width"];
 
         // list of the var that could be null
         $listData = [$start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $timestamps, $x2_resp, $y2_resp];
@@ -182,8 +181,8 @@ function stewInsertQuerys($body){
         }
 
         // the query is inserting a trial into the database
-        $sql = "INSERT INTO sartdata 
-                                (part_id, start_time, start_time_ms, level, trial_num, Ingredient_Name, Ingredient_Image, Ingredient_Size, Is_Target, Ingredient_Start, mask_start".$col.", touch_dur, swipe_dir, screen_height, screen_width) 
+        $sql = "INSERT INTO stewtestingdata 
+                                (part_id, start_time, start_time_ms, "."level".", trial_num, Ingredient_Name, Ingredient_Image, Ingredient_Size, Is_Target, Ingredient_Start, mask_start".$col.", touch_dur, swipe_dir, screen_height, screen_width) 
                 VALUES ('".$ID."', '".$task_start."','" .$task_start_ms."' ,'" .$lvl."' ,'".$trial_num."' , '".$ingr."', '".$ingr_image."','".$ingr_size."', '".$is_target."' '".$ingr_start."', '".$mask_start."'".$colData.",'".$resp_time."', '".$resp."', '".$screen_height."', '".$screen_width."')";
                 
         // if query is sucessful, then its added and a msg is sent saying it is
