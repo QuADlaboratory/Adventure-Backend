@@ -38,7 +38,7 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
 
         // get game type then if statement for respective thing
         $game_type = substr($auth_header, 9);
-        echo $game_type;
+
         if($game_type == "SART"){
             sartQuery($conn, $body, $ID);
         } elseif($game_type == "Stew"){
@@ -137,7 +137,9 @@ function sartQuery($conn, $body, $ID){
 }
 function stewInsertQuerys($conn, $body, $ID){
     // list of columns that can be null
-    $list = ["touch_start", "touch_end", "x1_touch", "y1_touch", "touch_raw","x2_touch", "y2_touch"];
+
+    $list = ["start_time", "start_time_ms", "level", "trial_num" , "Ingredient_Name", "Ingredient_Image", "Ingredient_Size", "Is_Target", "Ingredient_Start",
+        "Mask_Start", "touch_start","touch_end", "x1_touch", "y1_touch", "x2_touch", "y2_touch","touch_dur", "touch_raw", "swipe_dir", "screen_height", "screen_width"];
     // Handle the JSON data here	
     // loops for every trial
     foreach ($body as $elem){
@@ -165,8 +167,9 @@ function stewInsertQuerys($conn, $body, $ID){
         $screen_width = $elem["Screen_Width"];
 
         // list of the var that could be null
-        $listData = [$start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $timestamps, $x2_resp, $y2_resp];
-
+        $listData = [$task_start, $task_start_ms, $lvl, $trial_num, $ingr, $ingr_image, $ingr_size, $is_target, $ingr_start, $mask_start, 
+            $start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $x2_resp, $y2_resp, $resp_time, $timestamps, $resp, $screen_height, $screen_width];
+        var_dump($listData);
         // this section is to put all the not null values into the respective col
         // dbeaver was weird so these are defult to null and cannot send a null
         $col = "";
@@ -181,9 +184,8 @@ function stewInsertQuerys($conn, $body, $ID){
         }
 
         // the query is inserting a trial into the database
-        $sql = "INSERT INTO stewtestingdata 
-                                (part_id, start_time, start_time_ms, "."level".", trial_num, Ingredient_Name, Ingredient_Image, Ingredient_Size, Is_Target, Ingredient_Start, mask_start".$col.", touch_dur, swipe_dir, screen_height, screen_width) 
-                VALUES ('".$ID."', '".$task_start."','" .$task_start_ms."' ,'" .$lvl."' ,'".$trial_num."' , '".$ingr."', '".$ingr_image."','".$ingr_size."', '".$is_target."' '".$ingr_start."', '".$mask_start."'".$colData.",'".$resp_time."', '".$resp."', '".$screen_height."', '".$screen_width."')";
+        $sql = "INSERT INTO stewtestingdata (part_id ".$col.") VALUES ('".$ID."' ".$colData.")";
+        echo $sql;
                 
         // if query is sucessful, then its added and a msg is sent saying it is
         if (mysqli_query($conn, $sql)){
