@@ -42,7 +42,9 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
         if($game_type == "SART"){
             sartQuery($conn, $body, $ID);
         } elseif($game_type == "Stew"){
-            stewInsertQuerys($conn, $body, $ID);
+            stewInsertQuery($conn, $body, $ID);
+        } elseif($game_type == "FISH"){
+            fishInsertQueryInsertQuery($conn, $body, $ID);
         }else{
             echo '\nInvalid game type';
             http_response_code(405);
@@ -135,11 +137,11 @@ function sartQuery($conn, $body, $ID){
         }
     }
 }
-function stewInsertQuerys($conn, $body, $ID){
-    // list of columns that can be null
-
+function stewInsertQuery($conn, $body, $ID){
+    //list of the columns
     $list = ["start_time", "start_time_ms", "level", "trial_num" , "Ingredient_Name", "Ingredient_Image", "Ingredient_Size", "Is_Target", "Ingredient_Start",
-        "Mask_Start", "touch_start","touch_end", "x1_touch", "y1_touch", "x2_touch", "y2_touch","touch_dur", "touch_raw", "swipe_dir", "screen_height", "screen_width"];
+        "Mask_Start", "touch_start","touch_end", "x1_touch", "y1_touch", "x2_touch", "y2_touch","reaction_time", "touch_raw", "swipe_dir", "screen_height", "screen_width"];
+
     // Handle the JSON data here	
     // loops for every trial
     foreach ($body as $elem){
@@ -166,10 +168,10 @@ function stewInsertQuerys($conn, $body, $ID){
         $screen_height = $elem["Screen_Height"];
         $screen_width = $elem["Screen_Width"];
 
-        // list of the var that could be null
+        // list of the data
         $listData = [$task_start, $task_start_ms, $lvl, $trial_num, $ingr, $ingr_image, $ingr_size, $is_target, $ingr_start, $mask_start, 
             $start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $x2_resp, $y2_resp, $resp_time, $timestamps, $resp, $screen_height, $screen_width];
-        var_dump($listData);
+        
         // this section is to put all the not null values into the respective col
         // dbeaver was weird so these are defult to null and cannot send a null
         $col = "";
@@ -185,6 +187,71 @@ function stewInsertQuerys($conn, $body, $ID){
 
         // the query is inserting a trial into the database
         $sql = "INSERT INTO stewtestingdata (part_id ".$col.") VALUES ('".$ID."' ".$colData.")";
+        echo $sql;
+                
+        // if query is sucessful, then its added and a msg is sent saying it is
+        if (mysqli_query($conn, $sql)){
+            //echo "sent";
+            http_response_code(201);
+        }else{ // shows the error if not working
+            echo "query error". mysqli_error($conn);
+        }
+    }
+}
+function fishInsertQuery($conn, $body, $ID){
+    //list of the columns
+    $list = ["start_time", "start_time_ms", "level", "trial",  "stimulus_start", "is_there_target", "target_image",  "target_size", "target_coordinate", 
+            "target_x_position", "target_y_position", "target_x_jitter", "target_y_jitter", "touch_start", "touch_end", "touch_x1", "touch_y1","touch_x2", 
+            "touch_y2", "touch_raw", "reaction_time", "response", "nontarget_location","Screen_Height", "Screen_Width","is_screen_focused"];
+
+    // Handle the JSON data here	
+    // loops for every trial
+    foreach ($body as $elem){
+        // getting the values into vars
+        $task_start = $elem["Start_Time"]; 
+        $task_start_ms = $elem['Start_Time_MS'];
+        $trial_num = $elem["Trial_Num"];
+        $lvl = $elem["Level"];
+
+        $ingr = $elem["Ingredient_Name"];
+        $ingr_image = $elem["Ingredient_Image"];
+        $ingr_size = $elem["Ingredient_Size"];
+        $is_target = $elem["Is_Target"];
+        $ingr_start = $elem["Ingredient_Start"];
+        $mask_start = $elem["Lid_Start"];
+
+        $start_time_resp= $elem["Touch_Start"];
+        $end_time_resp = $elem["Touch_End"];
+        $x1_resp = $elem["Touch_X1"];
+        $y1_resp = $elem["Touch_Y1"];
+        $timestamps = $elem["Touch_Raw"];
+        $x2_resp =$elem["Touch_X2"];
+        $y2_resp = $elem["Touch_Y2"];
+        $resp_time = $elem["Resp_Time"];
+        $resp = $elem["Swipe_Dir"];
+
+        $screen_height = $elem["Screen_Height"];
+        $screen_width = $elem["Screen_Width"];
+
+        // list of the var that could be null
+        $listData = [$task_start, $task_start_ms, $lvl, $trial_num, $ingr, $ingr_image, $ingr_size, $is_target, $ingr_start, $mask_start, 
+            $start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $x2_resp, $y2_resp, $resp_time, $timestamps, $resp, $screen_height, $screen_width];
+        //var_dump($listData);
+        // this section is to put all the not null values into the respective col
+        // dbeaver was weird so these are defult to null and cannot send a null
+        $col = "";
+        $colData = "";
+        // add only the none null since in SQL its defult null
+        // later can automate this process so no need to hard code the query 
+        for ($i=0; $i < count($list); $i++){
+            if ($elem[$list[$i]] != null){
+                $col = $col . ', '.$list[$i];
+                $colData = $colData .", '".$elem[$list[$i]]."'" ;
+            }
+        }
+
+        // the query is inserting a trial into the database
+        $sql = "INSERT INTO fish_testing_data (participate_id ".$col.") VALUES ('".$ID."' ".$colData.")";
         echo $sql;
                 
         // if query is sucessful, then its added and a msg is sent saying it is
