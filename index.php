@@ -44,7 +44,7 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
         } elseif($game_type == "Stew"){
             stewInsertQuery($conn, $body, $ID);
         } elseif($game_type == "FISH"){
-            fishInsertQueryInsertQuery($conn, $body, $ID);
+            fishInsertQuery($conn, $body, $ID);
         }else{
             echo '\nInvalid game type';
             http_response_code(405);
@@ -207,36 +207,6 @@ function fishInsertQuery($conn, $body, $ID){
     // Handle the JSON data here	
     // loops for every trial
     foreach ($body as $elem){
-        // getting the values into vars
-        $task_start = $elem["Start_Time"]; 
-        $task_start_ms = $elem['Start_Time_MS'];
-        $trial_num = $elem["Trial_Num"];
-        $lvl = $elem["Level"];
-
-        $ingr = $elem["Ingredient_Name"];
-        $ingr_image = $elem["Ingredient_Image"];
-        $ingr_size = $elem["Ingredient_Size"];
-        $is_target = $elem["Is_Target"];
-        $ingr_start = $elem["Ingredient_Start"];
-        $mask_start = $elem["Lid_Start"];
-
-        $start_time_resp= $elem["Touch_Start"];
-        $end_time_resp = $elem["Touch_End"];
-        $x1_resp = $elem["Touch_X1"];
-        $y1_resp = $elem["Touch_Y1"];
-        $timestamps = $elem["Touch_Raw"];
-        $x2_resp =$elem["Touch_X2"];
-        $y2_resp = $elem["Touch_Y2"];
-        $resp_time = $elem["Resp_Time"];
-        $resp = $elem["Swipe_Dir"];
-
-        $screen_height = $elem["Screen_Height"];
-        $screen_width = $elem["Screen_Width"];
-
-        // list of the var that could be null
-        $listData = [$task_start, $task_start_ms, $lvl, $trial_num, $ingr, $ingr_image, $ingr_size, $is_target, $ingr_start, $mask_start, 
-            $start_time_resp, $end_time_resp, $x1_resp, $y1_resp, $x2_resp, $y2_resp, $resp_time, $timestamps, $resp, $screen_height, $screen_width];
-        //var_dump($listData);
         // this section is to put all the not null values into the respective col
         // dbeaver was weird so these are defult to null and cannot send a null
         $col = "";
