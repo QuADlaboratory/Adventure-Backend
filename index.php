@@ -43,7 +43,7 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
             sartQuery($conn, $body, $ID);
         } elseif($game_type == "Stew"){
             stewInsertQuery($conn, $body, $ID);
-        } elseif($game_type == "FISH"){
+        } elseif($game_type == "Fish"){
             fishInsertQuery($conn, $body, $ID);
         }else{
             echo '\nInvalid game type';
