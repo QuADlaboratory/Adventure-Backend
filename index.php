@@ -45,6 +45,8 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
             stewInsertQuery($conn, $body, $ID);
         } elseif($game_type == "Fish"){
             fishInsertQuery($conn, $body, $ID);
+        } elseif($game_type == "sess"){
+            sessionInsertQuery($connectToDB, $body, $ID);    
         }else{
             echo '\nInvalid game type';
             http_response_code(405);
@@ -52,6 +54,7 @@ if (!$_SERVER["REQUEST_METHOD"] == "POST"){
 
         //after data has been saved to db, then the connection btwn server and db gets stopped
         mysqli_close($conn);
+        mysqli_close($connectToDB);
 
     // For logging in 
     } else {
@@ -234,5 +237,38 @@ function fishInsertQuery($conn, $body, $ID){
     }
 }
 
+function sessionInsertQuery($conn1, $body, $ID){
+    //list of the columns
+    $list = ["time", "time_ms", "type"];
+
+    // Handle the JSON data here	
+    // loops for every list
+    foreach ($body as $elem){
+        // this section is to put all the not null values into the respective col
+        // dbeaver was weird so these are defult to null and cannot send a null
+        $col = "";
+        $colData = "";
+        // add only the none null since in SQL its defult null
+        // later can automate this process so no need to hard code the query 
+        for ($i=0; $i < count($list); $i++){
+            if ($elem[$list[$i]] != null){
+                $col = $col . ', '.$list[$i];
+                $colData = $colData .", '".$elem[$list[$i]]."'" ;
+            }
+        }
+
+        // the query is inserting a trial into the database
+        $sql = "INSERT INTO session_data (part_id ".$col.") VALUES ('".$ID."' ".$colData.")";
+        echo $sql;
+                
+        // if query is sucessful, then its added and a msg is sent saying it is
+        if (mysqli_query($conn1, $sql)){
+            //echo "sent";
+            http_response_code(201);
+        }else{ // shows the error if not working
+            echo "query error". mysqli_error($conn1);
+        }
+    }
+}
 
 ?>
